@@ -223,7 +223,7 @@ void automaticMode() {
   lcd.setCursor(0, 0);
   lcd.print("Automatisch  ");
 
-  int interval = (hour() >= 18 || hour() <= 5) ? automaticModeIntervalNight : automaticModeInterval; // Nachts anderes Intervall
+  int interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeInterval; // Nachts anderes Intervall
 
   for (int remainingTime = interval; remainingTime >= 0; remainingTime--) {
     lcd.setCursor(0, 1);
