@@ -49,3 +49,18 @@ Beim Einschalten ist die Steuerung gesperrt und muss erst mit einem RFID-Tag mit
 const int validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}};
 ```
 Auch im automatischen Modus hat man die Möglichkeit, die Steuerung zu sperren.
+
+## Aufbau
+Die Pin-Belegung kann im Quellcode über die Konstanten geändert werden.
+| Bauteil            | Pin-Belegung                                      |
+| ------------------ | ------------------------------------------------- |
+| Infrarot-Empfänger | 11                                                |
+| Schrittmotor       | 3, 4, 5, 6                                        |
+| Rote LED           | 28                                                |
+| Gelbe LED          | 24                                                |
+| Grüne LED          | 26                                                |
+| Piezo              | 8                                                 |
+| Ultraschallsensor  | 10 (Trigger), A0 (Echo)                           |
+| RFID-Empfänger     | 2 (RST), 50 (MISO), 51 (MOSI), 52 (SCK), 53 (SDA) |
+| LCD                | SDA, SCL                                          |
+| Real Time Clock    | SDA, SCL                                          |
