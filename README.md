@@ -64,3 +64,9 @@ Die Pin-Belegung kann im Quellcode über die Konstanten geändert werden.
 | RFID-Empfänger     | 2 (RST), 50 (MISO), 51 (MOSI), 52 (SCK), 53 (SDA) |
 | LCD                | SDA, SCL                                          |
 | Real Time Clock    | SDA, SCL                                          |
+
+## Verwendete Bibliotheken
+* [IRremote](https://github.com/Arduino-IRremote/Arduino-IRremote)
+* [LiquidCrystal I2C](https://github.com/johnrickman/LiquidCrystal_I2C)
+* [MFRC522](https://github.com/miguelbalboa/rfid)
+* [Time Library](https://github.com/PaulStoffregen/Time)/[DS1307RTC](https://github.com/PaulStoffregen/DS1307RTC)
