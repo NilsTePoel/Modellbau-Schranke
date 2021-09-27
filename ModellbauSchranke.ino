@@ -45,9 +45,13 @@ const int rstPin = 2;
 const int validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}}; 
 MFRC522 mfrc522(sdaPin, rstPin);
 
+enum Mode {
+  SELECT_MODE, MANUAL, AUTOMATIC, CHANGE_AUTOMATIC_MODE_INTERVAL, CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT
+};
+
 int automaticModeInterval = 30; // Anzahl der Sekunden, in der die Schranke geöffnet ist
-int automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 5 Uhr) geöffnet ist
-int mode = 0; // 0 = noch nicht ausgewählt, 1 = manuell, 2 = automatisch, 3 = "automaticModeInterval" anpassen, 4 = "automaticModeIntervalNight" anpassen
+int automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
+Mode mode = SELECT_MODE;
 boolean controlsLocked = true;
 boolean showTime = false;
 
@@ -94,60 +98,23 @@ void loop() {
     
     unlockControls();
   }
-  
-  if (mode == 0) {
-    lcd.setCursor(0, 0);
-    lcd.print("Modus w\341hlen    ");
-    lcd.setCursor(0, 1);
-    if (showTime) {
-      lcd.print(hour());
-      lcd.print(":");
-      lcd.print(minute());
-      lcd.print(":");
-      lcd.print(second());
-      lcd.print("        ");
-    } else {
-      lcd.print("             ");
-    }
-  
-    // Wurden Daten empfangen?
-    if (IrReceiver.decode()) {
-      #ifdef DEBUG
-        Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
-      #endif
-      IrReceiver.resume(); // Nächsten Wert einlesen
-  
-      switch (IrReceiver.decodedIRData.decodedRawData) {
-        case buttonA:
-          mode = 1; // Manueller Modus
-          break;
-        case buttonB:
-          mode = 2; // Automatischer Modus
-          break;
-        case buttonX:
-          mode = 3; // Intervall ändern
-          break;
-        case buttonLeft:
-          piezoEnabled = false;
-          digitalWrite(LED_BUILTIN, LOW);
-          break;
-        case buttonRight:
-          piezoEnabled = true;
-          digitalWrite(LED_BUILTIN, HIGH);
-          break;
-        case buttonDown:
-          showTime = !showTime;
-          break;
-      }
-    }
-  } else if (mode == 1) {
-    manualMode();
-  } else if (mode == 2) {
-    automaticMode();
-  } else if (mode == 3) {
-    changeAutomaticModeInterval();
-  } else if (mode == 4) {
-    changeAutomaticModeIntervalNight();
+
+  switch (mode) {
+    case SELECT_MODE:
+      selectMode();
+      break;
+    case MANUAL:
+      manualMode();
+      break;
+    case AUTOMATIC:
+      automaticMode();
+      break;
+    case CHANGE_AUTOMATIC_MODE_INTERVAL:
+      changeAutomaticModeInterval();
+      break;
+    case CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT:
+      changeAutomaticModeIntervalNight();
+      break;
   }
 
   // Uhrzeit ausgeben
@@ -158,6 +125,53 @@ void loop() {
       Serial.println(second());
     }
   #endif
+}
+
+void selectMode() {
+  lcd.setCursor(0, 0);
+  lcd.print("Modus w\341hlen    ");
+  lcd.setCursor(0, 1);
+  if (showTime) {
+    lcd.print(hour());
+    lcd.print(":");
+    lcd.print(minute());
+    lcd.print(":");
+    lcd.print(second());
+    lcd.print("        ");
+  } else {
+    lcd.print("             ");
+  }
+
+  // Wurden Daten empfangen?
+  if (IrReceiver.decode()) {
+    #ifdef DEBUG
+      Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
+    #endif
+    IrReceiver.resume(); // Nächsten Wert einlesen
+
+    switch (IrReceiver.decodedIRData.decodedRawData) {
+      case buttonA:
+        mode = MANUAL;
+        break;
+      case buttonB:
+        mode = AUTOMATIC;
+        break;
+      case buttonX:
+        mode = CHANGE_AUTOMATIC_MODE_INTERVAL;
+        break;
+      case buttonLeft:
+        piezoEnabled = false;
+        digitalWrite(LED_BUILTIN, LOW);
+        break;
+      case buttonRight:
+        piezoEnabled = true;
+        digitalWrite(LED_BUILTIN, HIGH);
+        break;
+      case buttonDown:
+        showTime = !showTime;
+        break;
+    }
+  }
 }
 
 void manualMode() {
@@ -211,7 +225,7 @@ void manualMode() {
         closeBarrier();
         break;
       case buttonUp:
-        mode = 0; // Zurück zum "Modus wählen"-Menü
+        mode = SELECT_MODE; // Zurück zum "Modus wählen"-Menü
         digitalWrite(greenLedPin, LOW);
         break;
     }
@@ -242,7 +256,7 @@ void automaticMode() {
         IrReceiver.resume(); // Nächsten Wert einlesen
     
         if (IrReceiver.decodedIRData.decodedRawData == buttonUp) {
-          mode = 0; // Zurück zum "Modus wählen"-Menü
+          mode = SELECT_MODE; // Zurück zum "Modus wählen"-Menü
           digitalWrite(greenLedPin, LOW);
           break;
         } else if (IrReceiver.decodedIRData.decodedRawData == buttonX) {
@@ -285,10 +299,10 @@ void changeAutomaticModeInterval() {
         automaticModeInterval = constrain(automaticModeInterval + 10, 1, 999);
         break;
       case buttonX:
-        mode = 4; // Weiter zum "Intervall (nachts) ändern"-Menü
+        mode = CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT; // Weiter zum "Intervall (nachts) ändern"-Menü
         break;
       case buttonUp:
-        mode = 0; // Zurück zum "Modus wählen"-Menü
+        mode = SELECT_MODE; // Zurück zum "Modus wählen"-Menü
         break;
     }
   }
@@ -323,10 +337,10 @@ void changeAutomaticModeIntervalNight() {
         automaticModeIntervalNight = constrain(automaticModeIntervalNight + 10, 1, 999);
         break;
       case buttonX:
-        mode = 0; // Weiter zum "Modus wählen"-Menü
+        mode = SELECT_MODE; // Weiter zum "Modus wählen"-Menü
         break;
       case buttonUp:
-        mode = 3; // Zurück zum "Intervall ändern"-Menü
+        mode = CHANGE_AUTOMATIC_MODE_INTERVAL; // Zurück zum "Intervall ändern"-Menü
         break;
     }
   }
