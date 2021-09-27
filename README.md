@@ -1,7 +1,9 @@
 # Modellbau-Schranke
 
 ## Menü "Modus wählen"
-Die Tastencodes müssen je nach Fernbedienung angepasst werden:
+
+Die Tastencodes müssen je nach Infrarot-Fernbedienung angepasst werden:
+
 ```C++
 const unsigned long buttonA = 3125149440;
 const unsigned long buttonB = 3091726080;
@@ -22,6 +24,7 @@ const unsigned long buttonUp = 3108437760;
 | Unten  | Anzeige der Uhrzeit ein-/ausschalten                             |
 
 ## Automatischer Modus
+
 Im automatischen Modus schließt sich die Schranke in bestimmten Zeitabständen, die im Menü ["Intervall anpassen"](#menü-intervall-anpassen) geändert werden können. Die Ampel wird dabei automatisch gesteuert. Die Hinderniserkennung verhindert, dass sich die Schranke schließt, wenn sich ein Objekt (z. B. ein Fahrzeug) unter ihr befindet.
 | Taste | Funktion                                             |
 | ----- | ---------------------------------------------------- |
@@ -29,6 +32,7 @@ Im automatischen Modus schließt sich die Schranke in bestimmten Zeitabständen,
 | Oben  | Zurück zum Menü ["Modus wählen"](#menü-modus-wählen) |
 
 ## Manueller Modus
+
 Im manuellen Modus wird die Schranke per Fernbedienung gesteuert.
 | Taste  | Funktion                                                   |
 | ------ | ---------------------------------------------------------- |
@@ -40,17 +44,22 @@ Im manuellen Modus wird die Schranke per Fernbedienung gesteuert.
 | Oben   | Zurück zum Menü "[Modus wählen"](#menü-modus-wählen)       |
 
 ## Menü "Intervall anpassen"
+
 Hier kann man die Zeit (in Sekunden) einstellen, in der die Schranke im automatischen Modus geöffnet ist, bevor sie sich wieder schließt. Es werden nacheinander zwei verschiedene Zeiten eingestellt. Die erste wird tagsüber (6 - 18 Uhr) verwendet, die zweite nachts. So kann man z. B. erreichen, dass sich die Schranke nachts seltener öffnet.
 Die Eingaben werden jeweils mit "X" bestätigt.
 
 ## Zugangssperre
+
 Beim Einschalten ist die Steuerung gesperrt und muss erst mit einem RFID-Tag mit gültiger ID entsperrt werden. Die gültigen IDs können im folgenden Array festgelegt werden:
+
 ```C++
 const int validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}};
 ```
+
 Auch im automatischen Modus hat man die Möglichkeit, die Steuerung zu sperren.
 
 ## Aufbau
+
 Die Pin-Belegung kann im Quellcode über die Konstanten geändert werden.
 | Bauteil            | Pin-Belegung                                      |
 | ------------------ | ------------------------------------------------- |
@@ -66,6 +75,7 @@ Die Pin-Belegung kann im Quellcode über die Konstanten geändert werden.
 | Real Time Clock    | SDA, SCL                                          |
 
 ## Verwendete Bibliotheken
+
 * [IRremote](https://github.com/Arduino-IRremote/Arduino-IRremote)
 * [LiquidCrystal I2C](https://github.com/johnrickman/LiquidCrystal_I2C)
 * [MFRC522](https://github.com/miguelbalboa/rfid)
