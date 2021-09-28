@@ -115,10 +115,10 @@ void loop() {
       automaticMode();
       break;
     case CHANGE_AUTOMATIC_MODE_INTERVAL_DAY:
-      changeAutomaticModeIntervalDay();
+      changeAutomaticModeInterval(false);
       break;
     case CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT:
-      changeAutomaticModeIntervalNight();
+      changeAutomaticModeInterval(true);
       break;
   }
 
@@ -274,12 +274,14 @@ void automaticMode() {
   }
 }
 
-void changeAutomaticModeIntervalDay() {
+void changeAutomaticModeInterval(boolean isNight) {
+  unsigned int interval = isNight ? automaticModeIntervalNight : automaticModeIntervalDay;
+  
   lcd.setCursor(0, 0);
-  lcd.print("Interv. (Tag):  ");
+  lcd.print(isNight ? "Interv. (Nacht):" : "Interv. (Tag):  ");
   lcd.setCursor(0, 1);
   lcd.print("< ");
-  lcd.print(automaticModeIntervalDay);
+  lcd.print(interval);
   lcd.print(" >  ");
 
   // Wurden Daten empfangen?
@@ -291,63 +293,28 @@ void changeAutomaticModeIntervalDay() {
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
       case buttonLeft:
-        automaticModeIntervalDay = constrain(automaticModeIntervalDay - 1, 1, 999);
+        interval = constrain(interval - 1, 1, 999);
         break;
       case buttonRight:
-        automaticModeIntervalDay = constrain(automaticModeIntervalDay + 1, 1, 999);
+        interval = constrain(interval + 1, 1, 999);
         break;
       case buttonA:
-        automaticModeIntervalDay = constrain(automaticModeIntervalDay - 10, 1, 999);
+        interval = constrain(interval - 10, 1, 999);
         break;
       case buttonB:
-        automaticModeIntervalDay = constrain(automaticModeIntervalDay + 10, 1, 999);
+        interval = constrain(interval + 10, 1, 999);
         break;
       case buttonX:
-        mode = CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT; // Weiter zum "Intervall (nachts) ändern"-Menü
+        mode = isNight ? SELECT_MODE : CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT; // Weiter zum nächsten Menü
         break;
       case buttonUp:
-        mode = SELECT_MODE; // Zurück zum "Modus wählen"-Menü
+        mode = isNight ? CHANGE_AUTOMATIC_MODE_INTERVAL_DAY : SELECT_MODE; // Zurück zum letzten Menü
         break;
     }
   }
-}
 
-void changeAutomaticModeIntervalNight() {
-  lcd.setCursor(0, 0);
-  lcd.print("Interv. (Nacht):");
-  lcd.setCursor(0, 1);
-  lcd.print("< ");
-  lcd.print(automaticModeIntervalNight);
-  lcd.print(" >  ");
-
-  // Wurden Daten empfangen?
-  if (IrReceiver.decode()) {
-    #ifdef DEBUG
-      Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
-    #endif
-    IrReceiver.resume(); // Nächsten Wert einlesen
-
-    switch (IrReceiver.decodedIRData.decodedRawData) {
-      case buttonLeft:
-        automaticModeIntervalNight = constrain(automaticModeIntervalNight - 1, 1, 999);
-        break;
-      case buttonRight:
-        automaticModeIntervalNight = constrain(automaticModeIntervalNight + 1, 1, 999);
-        break;
-      case buttonA:
-        automaticModeIntervalNight = constrain(automaticModeIntervalNight - 10, 1, 999);
-        break;
-      case buttonB:
-        automaticModeIntervalNight = constrain(automaticModeIntervalNight + 10, 1, 999);
-        break;
-      case buttonX:
-        mode = SELECT_MODE; // Weiter zum "Modus wählen"-Menü
-        break;
-      case buttonUp:
-        mode = CHANGE_AUTOMATIC_MODE_INTERVAL_DAY; // Zurück zum "Intervall (tagsüber) ändern"-Menü
-        break;
-    }
-  }
+  if (isNight) automaticModeIntervalNight = interval;
+  else automaticModeIntervalDay = interval;
 }
 
 void closeBarrier() {
