@@ -1,18 +1,21 @@
-#include <IRremote.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <IRremote.h>
 #include <Stepper.h>
 #include <SPI.h>
 #include <MFRC522.h>
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 
+// "DEBUG" aktiviert zusätzliche Ausgaben in der Konsole für die Fehlersuche
 // #define DEBUG
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+// LCD
+const byte address = 0x27, lineLength = 16, lineCount = 2;
+LiquidCrystal_I2C lcd(address, lineLength, lineCount);
 
 // Infrarot-Receiver
-const int receiverPin = 11;
+const byte receiverPin = 11;
 const unsigned long buttonA = 3125149440;
 const unsigned long buttonB = 3091726080;
 const unsigned long buttonX = 3208707840;
@@ -22,38 +25,39 @@ const unsigned long buttonDown = 3927310080;
 const unsigned long buttonUp = 3108437760;
 
 // Schrittmotor
-const int spu = 2048; // Schritte pro Umdrehung
-Stepper motor(spu, 3, 5, 4, 6);
+const unsigned int spu = 2048; // Schritte pro Umdrehung
+const byte stepperPins[4] = {3, 5, 4, 6};
+Stepper motor(spu, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
 
 // LEDs für die Ampelsteuerung
-const int redLedPin = 28;
-const int yellowLedPin = 24;
-const int greenLedPin = 26;
+const byte redLedPin = 28;
+const byte yellowLedPin = 24;
+const byte greenLedPin = 26;
 
 // Piezo
-const int piezoPin = 8;
-boolean piezoEnabled = false;
+const byte piezoPin = 8;
+bool piezoEnabled = false;
 
 // Ultraschallsensor
-const int triggerPin = 10;
-const int echoPin = A0;
-const int minimumDistance = 5; // Minimale Entfernung zur Schranke in Zentimetern
+const byte triggerPin = 10;
+const byte echoPin = A0;
+const byte minimumDistance = 5; // Minimale Entfernung zur Schranke in Zentimetern
 
 // RFID Kit
-const int sdaPin = 53;
-const int rstPin = 2;
-const int validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}}; 
+const byte sdaPin = 53;
+const byte rstPin = 2;
+const byte validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}}; 
 MFRC522 mfrc522(sdaPin, rstPin);
 
 enum Mode {
   SELECT_MODE, MANUAL, AUTOMATIC, CHANGE_AUTOMATIC_MODE_INTERVAL, CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT
 };
 
-int automaticModeInterval = 30; // Anzahl der Sekunden, in der die Schranke geöffnet ist
-int automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
+unsigned int automaticModeInterval = 30; // Anzahl der Sekunden, in der die Schranke geöffnet ist
+unsigned int automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
 Mode mode = SELECT_MODE;
-boolean controlsLocked = true;
-boolean showTime = false;
+bool controlsLocked = true;
+bool showTime = false;
 
 void setup() {
   #ifdef DEBUG
@@ -394,7 +398,7 @@ void closeBarrier() {
   digitalWrite(yellowLedPin, LOW);
 }
 
-boolean isBlockedByObstacle() {
+bool isBlockedByObstacle() {
   digitalWrite(triggerPin, LOW);
   delay(5);
   digitalWrite(triggerPin, HIGH);
@@ -408,8 +412,8 @@ boolean isBlockedByObstacle() {
 }
 
 void disableMotor() {
-  for (int pin = 3; pin <= 6; pin++) {
-    digitalWrite(pin, LOW);
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(stepperPins[i], LOW);
   }
 }
 
@@ -427,7 +431,7 @@ void unlockControls() {
     // Steuerung entsperren, falls die ID des RFID-Tags einer der eingespeicherten IDs entspricht
     if (mfrc522.uid.size == 4) {
       for (byte i = 0; i < 2; i++) {
-        boolean validID = true;
+        bool validID = true;
         for (byte j = 0; j < 4; j++) {
           if (mfrc522.uid.uidByte[j] != validIDs[i][j]) validID = false;
         }

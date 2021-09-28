@@ -53,7 +53,7 @@ Die Eingaben werden jeweils mit "X" bestätigt.
 Beim Einschalten ist die Steuerung gesperrt und muss erst mit einem RFID-Tag mit gültiger ID entsperrt werden. Die gültigen IDs können im folgenden Array festgelegt werden:
 
 ```C++
-const int validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}};
+const byte validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}};
 ```
 
 Auch im automatischen Modus hat man die Möglichkeit, die Steuerung zu sperren.
