@@ -51,10 +51,10 @@ const byte validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}}
 MFRC522 mfrc522(sdaPin, rstPin);
 
 enum Mode {
-  SELECT_MODE, MANUAL, AUTOMATIC, CHANGE_AUTOMATIC_MODE_INTERVAL, CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT
+  SELECT_MODE, MANUAL, AUTOMATIC, CHANGE_AUTOMATIC_MODE_INTERVAL_DAY, CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT
 };
 
-unsigned int automaticModeInterval = 30; // Anzahl der Sekunden, in der die Schranke geöffnet ist
+unsigned int automaticModeIntervalDay = 30; // Anzahl der Sekunden, in der die Schranke tagsüber geöffnet ist
 unsigned int automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
 Mode mode = SELECT_MODE;
 bool controlsLocked = true;
@@ -114,8 +114,8 @@ void loop() {
     case AUTOMATIC:
       automaticMode();
       break;
-    case CHANGE_AUTOMATIC_MODE_INTERVAL:
-      changeAutomaticModeInterval();
+    case CHANGE_AUTOMATIC_MODE_INTERVAL_DAY:
+      changeAutomaticModeIntervalDay();
       break;
     case CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT:
       changeAutomaticModeIntervalNight();
@@ -125,9 +125,10 @@ void loop() {
   // Uhrzeit ausgeben
   #ifdef DEBUG
     if (millis() % 10 == 0) {
-      Serial.print(hour()); Serial.print(":");
-      Serial.print(minute()); Serial.print(":");
-      Serial.println(second());
+      time_t t = now();
+      Serial.print(hour(t)); Serial.print(":");
+      Serial.print(minute(t)); Serial.print(":");
+      Serial.println(second(t));
     }
   #endif
 }
@@ -137,11 +138,10 @@ void selectMode() {
   lcd.print("Modus w\341hlen    ");
   lcd.setCursor(0, 1);
   if (showTime) {
-    lcd.print(hour());
-    lcd.print(":");
-    lcd.print(minute());
-    lcd.print(":");
-    lcd.print(second());
+    time_t t = now();
+    printDigit(hour(t)); lcd.print(":");
+    printDigit(minute(t)); lcd.print(":");
+    printDigit(second(t));
     lcd.print("        ");
   } else {
     lcd.print("             ");
@@ -162,7 +162,7 @@ void selectMode() {
         mode = AUTOMATIC;
         break;
       case buttonX:
-        mode = CHANGE_AUTOMATIC_MODE_INTERVAL;
+        mode = CHANGE_AUTOMATIC_MODE_INTERVAL_DAY;
         break;
       case buttonLeft:
         piezoEnabled = false;
@@ -242,7 +242,7 @@ void automaticMode() {
   lcd.setCursor(0, 0);
   lcd.print("Automatisch  ");
 
-  int interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeInterval; // Nachts anderes Intervall
+  int interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeIntervalDay; // Nachts anderes Intervall
 
   for (int remainingTime = interval; remainingTime >= 0; remainingTime--) {
     lcd.setCursor(0, 1);
@@ -275,12 +275,12 @@ void automaticMode() {
   }
 }
 
-void changeAutomaticModeInterval() {
+void changeAutomaticModeIntervalDay() {
   lcd.setCursor(0, 0);
-  lcd.print("Intervall:      ");
+  lcd.print("Interv. (Tag):  ");
   lcd.setCursor(0, 1);
   lcd.print("< ");
-  lcd.print(automaticModeInterval);
+  lcd.print(automaticModeIntervalDay);
   lcd.print(" >  ");
 
   // Wurden Daten empfangen?
@@ -292,16 +292,16 @@ void changeAutomaticModeInterval() {
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
       case buttonLeft:
-        automaticModeInterval = constrain(automaticModeInterval - 1, 1, 999);
+        automaticModeIntervalDay = constrain(automaticModeIntervalDay - 1, 1, 999);
         break;
       case buttonRight:
-        automaticModeInterval = constrain(automaticModeInterval + 1, 1, 999);
+        automaticModeIntervalDay = constrain(automaticModeIntervalDay + 1, 1, 999);
         break;
       case buttonA:
-        automaticModeInterval = constrain(automaticModeInterval - 10, 1, 999);
+        automaticModeIntervalDay = constrain(automaticModeIntervalDay - 10, 1, 999);
         break;
       case buttonB:
-        automaticModeInterval = constrain(automaticModeInterval + 10, 1, 999);
+        automaticModeIntervalDay = constrain(automaticModeIntervalDay + 10, 1, 999);
         break;
       case buttonX:
         mode = CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT; // Weiter zum "Intervall (nachts) ändern"-Menü
@@ -315,7 +315,7 @@ void changeAutomaticModeInterval() {
 
 void changeAutomaticModeIntervalNight() {
   lcd.setCursor(0, 0);
-  lcd.print("Interv. (nachts)");
+  lcd.print("Interv. (Nacht):");
   lcd.setCursor(0, 1);
   lcd.print("< ");
   lcd.print(automaticModeIntervalNight);
@@ -345,6 +345,7 @@ void changeAutomaticModeIntervalNight() {
         mode = SELECT_MODE; // Weiter zum "Modus wählen"-Menü
         break;
       case buttonUp:
+        mode = CHANGE_AUTOMATIC_MODE_INTERVAL_DAY; // Zurück zum "Intervall (tagsüber) ändern"-Menü
         break;
     }
   }
@@ -438,4 +439,9 @@ void unlockControls() {
       }
     }
   }
+}
+
+void printDigit(byte digit) {
+  if (digit < 10) lcd.print("0");
+  lcd.print(digit);
 }
