@@ -141,8 +141,7 @@ void selectMode() {
     time_t t = now();
     printDigit(hour(t)); lcd.print(":");
     printDigit(minute(t)); lcd.print(":");
-    printDigit(second(t));
-    lcd.print("        ");
+    printDigit(second(t)); lcd.print("        ");
   } else {
     lcd.print("             ");
   }
@@ -156,10 +155,10 @@ void selectMode() {
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
       case buttonA:
-        mode = MANUAL;
+        mode = AUTOMATIC;
         break;
       case buttonB:
-        mode = AUTOMATIC;
+        mode = MANUAL;
         break;
       case buttonX:
         mode = CHANGE_AUTOMATIC_MODE_INTERVAL_DAY;
