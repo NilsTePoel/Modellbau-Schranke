@@ -26,6 +26,7 @@ const unsigned long buttonUp = 3108437760;
 
 // Schrittmotor
 const unsigned int spu = 2048; // Schritte pro Umdrehung
+const byte stepperSpeed = 5; // Motor-Geschwindigkeit in Umdrehungen pro Minute
 const byte stepperPins[4] = {3, 5, 4, 6};
 Stepper motor(spu, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
 
@@ -70,7 +71,7 @@ void setup() {
   
   IrReceiver.begin(receiverPin, DISABLE_LED_FEEDBACK); // IR-Empfänger aktivieren
 
-  motor.setSpeed(5); // Motor-Geschwindigkeit in Umdrehungen pro Minute festlegen
+  motor.setSpeed(stepperSpeed);
 
   // LED-Pins
   pinMode(redLedPin, OUTPUT);
@@ -344,7 +345,6 @@ void changeAutomaticModeIntervalNight() {
         mode = SELECT_MODE; // Weiter zum "Modus wählen"-Menü
         break;
       case buttonUp:
-        mode = CHANGE_AUTOMATIC_MODE_INTERVAL; // Zurück zum "Intervall ändern"-Menü
         break;
     }
   }
@@ -420,12 +420,7 @@ void disableMotor() {
 void unlockControls() {
   if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
     #ifdef DEBUG
-      Serial.print("ID des RFID-Tags: ");
-      for (byte i = 0; i < mfrc522.uid.size; i++) {
-        Serial.print(mfrc522.uid.uidByte[i], HEX);
-        Serial.print(" ");
-      }
-      Serial.println();
+      mfrc522.PICC_DumpDetailsToSerial(&mfrc522.uid);
     #endif
 
     // Steuerung entsperren, falls die ID des RFID-Tags einer der eingespeicherten IDs entspricht
