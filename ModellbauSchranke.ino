@@ -7,8 +7,8 @@
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 
-// "DEBUG" aktiviert zusätzliche Ausgaben in der Konsole für die Fehlersuche
-// #define DEBUG
+// "debug" aktiviert zusätzliche Ausgaben in der Konsole für die Fehlersuche
+const bool debug = false;
 
 // LCD
 const byte address = 0x27, lineLength = 16, lineCount = 2;
@@ -61,9 +61,7 @@ bool controlsLocked = true;
 bool showTime = false;
 
 void setup() {
-  #ifdef DEBUG
-    Serial.begin(9600);
-  #endif
+  if (debug) Serial.begin(9600);
 
   // LCD einrichten
   lcd.init();
@@ -123,14 +121,14 @@ void loop() {
   }
 
   // Uhrzeit ausgeben
-  #ifdef DEBUG
+  if (debug) {
     if (millis() % 10 == 0) {
       time_t t = now();
       Serial.print(hour(t)); Serial.print(":");
       Serial.print(minute(t)); Serial.print(":");
       Serial.println(second(t));
     }
-  #endif
+  }
 }
 
 void selectMode() {
@@ -148,9 +146,8 @@ void selectMode() {
 
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    #ifdef DEBUG
+    if (debug)
       Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
-    #endif
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
@@ -187,9 +184,8 @@ void manualMode() {
   
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    #ifdef DEBUG
+    if (debug)
       Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
-    #endif
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
@@ -241,9 +237,10 @@ void automaticMode() {
   lcd.setCursor(0, 0);
   lcd.print("Automatisch  ");
 
-  int interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeIntervalDay; // Nachts anderes Intervall
-
-  for (int remainingTime = interval; remainingTime >= 0; remainingTime--) {
+  unsigned int interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeIntervalDay; // Nachts anderes Intervall
+  bool backToMenu = false;
+  
+  for (unsigned int remainingTime = interval; remainingTime > 0; remainingTime--) {
     lcd.setCursor(0, 1);
     lcd.print("Noch ");
     lcd.print(remainingTime);
@@ -254,14 +251,14 @@ void automaticMode() {
     } else {
       // Wurden Daten empfangen?
       if (IrReceiver.decode()) {
-        #ifdef DEBUG
+        if (debug)
           Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
-        #endif
         IrReceiver.resume(); // Nächsten Wert einlesen
     
         if (IrReceiver.decodedIRData.decodedRawData == buttonUp) {
           mode = SELECT_MODE; // Zurück zum "Modus wählen"-Menü
           digitalWrite(greenLedPin, LOW);
+          backToMenu = true;
           break;
         } else if (IrReceiver.decodedIRData.decodedRawData == buttonX) {
           controlsLocked = true;
@@ -269,9 +266,9 @@ void automaticMode() {
       }
     }
 
-    if (remainingTime == 0) closeBarrier();
     delay(1000);
   }
+  if (!backToMenu) closeBarrier();
 }
 
 void changeAutomaticModeInterval(boolean isNight) {
@@ -286,9 +283,8 @@ void changeAutomaticModeInterval(boolean isNight) {
 
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    #ifdef DEBUG
+    if (debug)
       Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
-    #endif
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
@@ -372,23 +368,22 @@ bool isBlockedByObstacle() {
   delay(10);
   digitalWrite(triggerPin, LOW);
 
-  int duration = pulseIn(echoPin, HIGH); // Dauer, bis der Schall zum Ultraschallsensor zurückkehrt
-  int distance = 0.03432 * (duration / 2); // s = v * t (in cm)
+  unsigned long duration = pulseIn(echoPin, HIGH); // Dauer, bis der Schall zum Ultraschallsensor zurückkehrt
+  unsigned long distance = 0.03432 * (duration / 2); // s = v * t (in cm)
 
   return distance < minimumDistance;
 }
 
 void disableMotor() {
-  for (int i = 0; i < 4; i++) {
+  for (byte i = 0; i < 4; i++) {
     digitalWrite(stepperPins[i], LOW);
   }
 }
 
 void unlockControls() {
   if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
-    #ifdef DEBUG
+    if (debug)
       mfrc522.PICC_DumpDetailsToSerial(&mfrc522.uid);
-    #endif
 
     // Steuerung entsperren, falls die ID des RFID-Tags einer der eingespeicherten IDs entspricht
     if (mfrc522.uid.size == 4) {
