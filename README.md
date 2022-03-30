@@ -5,13 +5,13 @@
 Die Tastencodes müssen je nach Infrarot-Fernbedienung angepasst werden:
 
 ```C++
-const unsigned long buttonA = 3125149440;
-const unsigned long buttonB = 3091726080;
-const unsigned long buttonX = 3208707840;
-const unsigned long buttonLeft = 3141861120;
-const unsigned long buttonRight = 3158572800;
-const unsigned long buttonDown = 3927310080;
-const unsigned long buttonUp = 3108437760;
+const uint32_t buttonA = 3125149440;
+const uint32_t buttonB = 3091726080;
+const uint32_t buttonX = 3208707840;
+const uint32_t buttonLeft = 3141861120;
+const uint32_t buttonRight = 3158572800;
+const uint32_t buttonDown = 3927310080;
+const uint32_t buttonUp = 3108437760;
 ```
 
 | Taste  | Funktion                                                         |
@@ -53,7 +53,7 @@ Die Eingaben werden jeweils mit "X" bestätigt.
 Beim Einschalten ist die Steuerung gesperrt und muss erst mit einem RFID-Tag mit gültiger ID entsperrt werden. Die gültigen IDs können im folgenden Array festgelegt werden:
 
 ```C++
-const byte validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}};
+const uint8_t validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}};
 ```
 
 Auch im automatischen Modus hat man die Möglichkeit, die Steuerung zu sperren.

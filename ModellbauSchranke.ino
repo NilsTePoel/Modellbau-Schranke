@@ -7,67 +7,75 @@
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 
-// "debug" aktiviert zusätzliche Ausgaben in der Konsole für die Fehlersuche
-const bool debug = false;
+#include "Debug.h"
+#include "DistanceSensor.h"
 
 // LCD
-const byte address = 0x27, lineLength = 16, lineCount = 2;
+const uint8_t address = 0x27, lineLength = 16, lineCount = 2;
 LiquidCrystal_I2C lcd(address, lineLength, lineCount);
 
 // Infrarot-Receiver
-const byte receiverPin = 11;
-const unsigned long buttonA = 3125149440;
-const unsigned long buttonB = 3091726080;
-const unsigned long buttonX = 3208707840;
-const unsigned long buttonLeft = 3141861120;
-const unsigned long buttonRight = 3158572800;
-const unsigned long buttonDown = 3927310080;
-const unsigned long buttonUp = 3108437760;
+const uint8_t receiverPin = 11;
+const uint32_t buttonA = 3125149440;
+const uint32_t buttonB = 3091726080;
+const uint32_t buttonX = 3208707840;
+const uint32_t buttonLeft = 3141861120;
+const uint32_t buttonRight = 3158572800;
+const uint32_t buttonDown = 3927310080;
+const uint32_t buttonUp = 3108437760;
 
 // Schrittmotor
-const unsigned int spu = 2048; // Schritte pro Umdrehung
-const byte stepperSpeed = 5; // Motor-Geschwindigkeit in Umdrehungen pro Minute
-const byte stepperPins[4] = {3, 5, 4, 6};
+const uint16_t spu = 2048; // Schritte pro Umdrehung
+const uint8_t stepperSpeed = 5; // Motor-Geschwindigkeit in Umdrehungen pro Minute
+const uint8_t stepperPins[4] = {3, 5, 4, 6};
 Stepper motor(spu, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
 
 // LEDs für die Ampelsteuerung
-const byte redLedPin = 28;
-const byte yellowLedPin = 24;
-const byte greenLedPin = 26;
+const uint8_t redLedPin = 28;
+const uint8_t yellowLedPin = 24;
+const uint8_t greenLedPin = 26;
 
 // Piezo
-const byte piezoPin = 8;
+const uint8_t piezoPin = 8;
 bool piezoEnabled = false;
 
 // Ultraschallsensor
-const byte triggerPin = 10;
-const byte echoPin = A0;
-const byte minimumDistance = 5; // Minimale Entfernung zur Schranke in Zentimetern
+const uint8_t triggerPin = 10;
+const uint8_t echoPin = A0;
+const uint8_t minimumDistance = 5; // Minimale Entfernung zur Schranke in Zentimetern
+DistanceSensor distanceSensor(triggerPin, echoPin, minimumDistance);
 
 // RFID Kit
-const byte sdaPin = 53;
-const byte rstPin = 2;
-const byte validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}}; 
+const uint8_t sdaPin = 53;
+const uint8_t rstPin = 2;
+const uint8_t validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}}; 
 MFRC522 mfrc522(sdaPin, rstPin);
 
-enum Mode {
-  SELECT_MODE, MANUAL, AUTOMATIC, CHANGE_AUTOMATIC_MODE_INTERVAL_DAY, CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT
+enum class Mode {
+  CONTROLS_LOCKED,
+  SELECT_MODE,
+  MANUAL,
+  AUTOMATIC,
+  CHANGE_AUTOMATIC_MODE_INTERVAL_DAY,
+  CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT
 };
 
-unsigned int automaticModeIntervalDay = 30; // Anzahl der Sekunden, in der die Schranke tagsüber geöffnet ist
-unsigned int automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
-Mode mode = SELECT_MODE;
-bool controlsLocked = true;
+Mode mode = Mode::CONTROLS_LOCKED;
+
+uint16_t automaticModeIntervalDay = 30; // Anzahl der Sekunden, in der die Schranke tagsüber geöffnet ist
+uint16_t automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
+bool automaticModeControlsLocked = false;
 bool showTime = false;
 
 void setup() {
-  if (debug) Serial.begin(9600);
+  setupDebugPrinting();
 
   // LCD einrichten
   lcd.init();
   lcd.backlight();
   
-  IrReceiver.begin(receiverPin, DISABLE_LED_FEEDBACK); // IR-Empfänger aktivieren
+  // IR-Empfänger aktivieren
+  IrReceiver.begin(receiverPin, DISABLE_LED_FEEDBACK);
 
   motor.setSpeed(stepperSpeed);
 
@@ -75,10 +83,6 @@ void setup() {
   pinMode(redLedPin, OUTPUT);
   pinMode(yellowLedPin, OUTPUT);
   pinMode(greenLedPin, OUTPUT);
-
-  // Ultraschallsensor-Pins
-  pinMode(triggerPin, OUTPUT);
-  pinMode(echoPin, INPUT);
 
   pinMode(piezoPin, OUTPUT); // Piezo-Pin
   pinMode(LED_BUILTIN, OUTPUT); // Eingebaute LED (zeigt Piezo-Status an)
@@ -89,45 +93,46 @@ void setup() {
 
   // RTC
   setSyncProvider(RTC.get);
+  
+  // Uhrzeit ausgeben, wenn der Debug-Modus aktiviert ist
+  time_t t = now();
+  DEBUG_PRINT(hour(t)); DEBUG_PRINT(":");
+  DEBUG_PRINT(minute(t)); DEBUG_PRINT(":");
+  DEBUG_PRINTLN(second(t));
 }
 
 void loop() {
-  // Warten, bis die Steuerung per RFID-Chip entsperrt wurde
-  while (controlsLocked) {
-    lcd.setCursor(0, 0);
-    lcd.print("Steuerung");
-    lcd.setCursor(0, 1);
-    lcd.print("gesperrt");
-    
-    unlockControls();
-  }
-
   switch (mode) {
-    case SELECT_MODE:
+    case Mode::CONTROLS_LOCKED:
+      controlsLocked();
+      break;
+    case Mode::SELECT_MODE:
       selectMode();
       break;
-    case MANUAL:
+    case Mode::MANUAL:
       manualMode();
       break;
-    case AUTOMATIC:
+    case Mode::AUTOMATIC:
       automaticMode();
       break;
-    case CHANGE_AUTOMATIC_MODE_INTERVAL_DAY:
+    case Mode::CHANGE_AUTOMATIC_MODE_INTERVAL_DAY:
       changeAutomaticModeInterval(false);
       break;
-    case CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT:
+    case Mode::CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT:
       changeAutomaticModeInterval(true);
       break;
   }
+}
 
-  // Uhrzeit ausgeben
-  if (debug) {
-    if (millis() % 10 == 0) {
-      time_t t = now();
-      Serial.print(hour(t)); Serial.print(":");
-      Serial.print(minute(t)); Serial.print(":");
-      Serial.println(second(t));
-    }
+void controlsLocked() {
+  lcd.setCursor(0, 0);
+  lcd.print("Steuerung");
+  lcd.setCursor(0, 1);
+  lcd.print("gesperrt");
+
+  // Warten, bis die Steuerung per RFID-Chip entsperrt wurde
+  if (validRFIDTagPresent()) {
+    mode = Mode::SELECT_MODE;
   }
 }
 
@@ -146,19 +151,18 @@ void selectMode() {
 
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    if (debug)
-      Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
+    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
       case buttonA:
-        mode = AUTOMATIC;
+        mode = Mode::AUTOMATIC;
         break;
       case buttonB:
-        mode = MANUAL;
+        mode = Mode::MANUAL;
         break;
       case buttonX:
-        mode = CHANGE_AUTOMATIC_MODE_INTERVAL_DAY;
+        mode = Mode::CHANGE_AUTOMATIC_MODE_INTERVAL_DAY;
         break;
       case buttonLeft:
         piezoEnabled = false;
@@ -184,8 +188,7 @@ void manualMode() {
   
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    if (debug)
-      Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
+    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
@@ -225,7 +228,7 @@ void manualMode() {
         closeBarrier();
         break;
       case buttonUp:
-        mode = SELECT_MODE; // Zurück zum "Modus wählen"-Menü
+        mode = Mode::SELECT_MODE; // Zurück zum "Modus wählen"-Menü
         digitalWrite(greenLedPin, LOW);
         break;
     }
@@ -237,31 +240,30 @@ void automaticMode() {
   lcd.setCursor(0, 0);
   lcd.print("Automatisch  ");
 
-  unsigned int interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeIntervalDay; // Nachts anderes Intervall
+  uint16_t interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeIntervalDay; // Nachts anderes Intervall
   bool backToMenu = false;
   
-  for (unsigned int remainingTime = interval; remainingTime > 0; remainingTime--) {
+  for (uint16_t remainingTime = interval; remainingTime > 0; remainingTime--) {
     lcd.setCursor(0, 1);
     lcd.print("Noch ");
     lcd.print(remainingTime);
     lcd.print(" Sek. ");
 
-    if (controlsLocked) {
-      unlockControls();
-    } else {
+    if (automaticModeControlsLocked && validRFIDTagPresent()) {
+      automaticModeControlsLocked = false;
+    } else if (!automaticModeControlsLocked) {
       // Wurden Daten empfangen?
       if (IrReceiver.decode()) {
-        if (debug)
-          Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
+        DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
         IrReceiver.resume(); // Nächsten Wert einlesen
     
         if (IrReceiver.decodedIRData.decodedRawData == buttonUp) {
-          mode = SELECT_MODE; // Zurück zum "Modus wählen"-Menü
+          mode = Mode::SELECT_MODE; // Zurück zum "Modus wählen"-Menü
           digitalWrite(greenLedPin, LOW);
           backToMenu = true;
           break;
         } else if (IrReceiver.decodedIRData.decodedRawData == buttonX) {
-          controlsLocked = true;
+          automaticModeControlsLocked = true;
         }
       }
     }
@@ -272,7 +274,7 @@ void automaticMode() {
 }
 
 void changeAutomaticModeInterval(boolean isNight) {
-  unsigned int interval = isNight ? automaticModeIntervalNight : automaticModeIntervalDay;
+  uint16_t interval = isNight ? automaticModeIntervalNight : automaticModeIntervalDay;
   
   lcd.setCursor(0, 0);
   lcd.print(isNight ? "Interv. (Nacht):" : "Interv. (Tag):  ");
@@ -283,8 +285,7 @@ void changeAutomaticModeInterval(boolean isNight) {
 
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    if (debug)
-      Serial.println(IrReceiver.decodedIRData.decodedRawData, DEC);
+    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
@@ -301,10 +302,10 @@ void changeAutomaticModeInterval(boolean isNight) {
         interval = constrain(interval + 10, 1, 999);
         break;
       case buttonX:
-        mode = isNight ? SELECT_MODE : CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT; // Weiter zum nächsten Menü
+        mode = isNight ? Mode::SELECT_MODE : Mode::CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT; // Weiter zum nächsten Menü
         break;
       case buttonUp:
-        mode = isNight ? CHANGE_AUTOMATIC_MODE_INTERVAL_DAY : SELECT_MODE; // Zurück zum letzten Menü
+        mode = isNight ? Mode::CHANGE_AUTOMATIC_MODE_INTERVAL_DAY : Mode::SELECT_MODE; // Zurück zum letzten Menü
         break;
     }
   }
@@ -330,7 +331,7 @@ void closeBarrier() {
   digitalWrite(yellowLedPin, LOW);
   
   // Die Schranke soll sich nicht schließen, wenn sich ein Objekt unter ihr befindet
-  while (isBlockedByObstacle()) {
+  while (distanceSensor.isBlockedByObstacle()) {
     lcd.setCursor(0, 1);
     lcd.print("blockiert!    ");
     delay(1000);
@@ -361,48 +362,37 @@ void closeBarrier() {
   digitalWrite(yellowLedPin, LOW);
 }
 
-bool isBlockedByObstacle() {
-  digitalWrite(triggerPin, LOW);
-  delay(5);
-  digitalWrite(triggerPin, HIGH);
-  delay(10);
-  digitalWrite(triggerPin, LOW);
-
-  unsigned long duration = pulseIn(echoPin, HIGH); // Dauer, bis der Schall zum Ultraschallsensor zurückkehrt
-  unsigned long distance = 0.03432 * (duration / 2); // s = v * t (in cm)
-
-  return distance < minimumDistance;
-}
-
 void disableMotor() {
-  for (byte i = 0; i < 4; i++) {
+  for (uint8_t i = 0; i < 4; i++) {
     digitalWrite(stepperPins[i], LOW);
   }
 }
 
-void unlockControls() {
+bool validRFIDTagPresent() {
   if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
-    if (debug)
+    #ifdef DEBUG_MODE
       mfrc522.PICC_DumpDetailsToSerial(&mfrc522.uid);
+    #endif
 
     // Steuerung entsperren, falls die ID des RFID-Tags einer der eingespeicherten IDs entspricht
     if (mfrc522.uid.size == 4) {
-      for (byte i = 0; i < 2; i++) {
+      for (uint8_t i = 0; i < sizeof(validIDs); i++) {
         bool validID = true;
-        for (byte j = 0; j < 4; j++) {
+        for (uint8_t j = 0; j < 4; j++) {
           if (mfrc522.uid.uidByte[j] != validIDs[i][j]) validID = false;
         }
 
         if (validID) {
-          controlsLocked = false;
-          break;
+          return true;
         }
       }
     }
   }
+
+  return false;
 }
 
-void printDigit(byte digit) {
+void printDigit(uint8_t digit) {
   if (digit < 10) lcd.print("0");
   lcd.print(digit);
 }
