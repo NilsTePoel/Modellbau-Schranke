@@ -9,6 +9,7 @@
 
 #include "Debug.h"
 #include "DistanceSensor.h"
+#include "TrafficLight.h"
 
 // LCD
 const uint8_t address = 0x27, lineLength = 16, lineCount = 2;
@@ -30,14 +31,14 @@ const uint8_t stepperSpeed = 5; // Motor-Geschwindigkeit in Umdrehungen pro Minu
 const uint8_t stepperPins[4] = {3, 5, 4, 6};
 Stepper motor(spu, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
 
-// LEDs für die Ampelsteuerung
+// Ampel
 const uint8_t redLedPin = 28;
 const uint8_t yellowLedPin = 24;
 const uint8_t greenLedPin = 26;
+TrafficLight trafficLight(redLedPin, yellowLedPin, greenLedPin);
 
 // Piezo
 const uint8_t piezoPin = 8;
-bool piezoEnabled = false;
 
 // Ultraschallsensor
 const uint8_t triggerPin = 10;
@@ -65,6 +66,7 @@ Mode mode = Mode::CONTROLS_LOCKED;
 uint16_t automaticModeIntervalDay = 30; // Anzahl der Sekunden, in der die Schranke tagsüber geöffnet ist
 uint16_t automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
 bool automaticModeControlsLocked = false;
+bool piezoEnabled = false;
 bool showTime = false;
 
 void setup() {
@@ -78,11 +80,6 @@ void setup() {
   IrReceiver.begin(receiverPin, DISABLE_LED_FEEDBACK);
 
   motor.setSpeed(stepperSpeed);
-
-  // LED-Pins
-  pinMode(redLedPin, OUTPUT);
-  pinMode(yellowLedPin, OUTPUT);
-  pinMode(greenLedPin, OUTPUT);
 
   pinMode(piezoPin, OUTPUT); // Piezo-Pin
   pinMode(LED_BUILTIN, OUTPUT); // Eingebaute LED (zeigt Piezo-Status an)
@@ -180,7 +177,8 @@ void selectMode() {
 }
 
 void manualMode() {
-  digitalWrite(greenLedPin, HIGH);
+  trafficLight.green();
+
   lcd.setCursor(0, 0);
   lcd.print("Manuell         ");
   lcd.setCursor(0, 1);
@@ -225,18 +223,19 @@ void manualMode() {
         disableMotor();
         break;
       case buttonDown:
-        closeBarrier();
+        closeAndOpenBarrier();
         break;
       case buttonUp:
         mode = Mode::SELECT_MODE; // Zurück zum "Modus wählen"-Menü
-        digitalWrite(greenLedPin, LOW);
+        trafficLight.off();
         break;
     }
   }
 }
 
 void automaticMode() {
-  digitalWrite(greenLedPin, HIGH);
+  trafficLight.green();
+
   lcd.setCursor(0, 0);
   lcd.print("Automatisch  ");
 
@@ -259,7 +258,7 @@ void automaticMode() {
     
         if (IrReceiver.decodedIRData.decodedRawData == buttonUp) {
           mode = Mode::SELECT_MODE; // Zurück zum "Modus wählen"-Menü
-          digitalWrite(greenLedPin, LOW);
+          trafficLight.off();
           backToMenu = true;
           break;
         } else if (IrReceiver.decodedIRData.decodedRawData == buttonX) {
@@ -270,7 +269,7 @@ void automaticMode() {
 
     delay(1000);
   }
-  if (!backToMenu) closeBarrier();
+  if (!backToMenu) closeAndOpenBarrier();
 }
 
 void changeAutomaticModeInterval(boolean isNight) {
@@ -314,21 +313,19 @@ void changeAutomaticModeInterval(boolean isNight) {
   else automaticModeIntervalDay = interval;
 }
 
-void closeBarrier() {
+void closeAndOpenBarrier() {
   lcd.setCursor(0, 0);
   lcd.print("Schranke        ");
   lcd.setCursor(0, 1);
   lcd.print("schlie\342t sich!  ");
 
   // Ampel schaltet erst auf gelb und dann auf rot um
-  digitalWrite(greenLedPin, LOW);
-  digitalWrite(yellowLedPin, HIGH);
+  trafficLight.yellow();
   if (piezoEnabled) digitalWrite(piezoPin, HIGH); // Piezo einschalten
   delay(500);
   if (piezoEnabled) digitalWrite(piezoPin, LOW); // Piezo ausschalten
   delay(2500);
-  digitalWrite(redLedPin, HIGH);
-  digitalWrite(yellowLedPin, LOW);
+  trafficLight.red();
   
   // Die Schranke soll sich nicht schließen, wenn sich ein Objekt unter ihr befindet
   while (distanceSensor.isBlockedByObstacle()) {
@@ -355,11 +352,9 @@ void closeBarrier() {
   disableMotor();
 
   // Ampel schaltet erst auf rot-gelb, dann auf grün
-  digitalWrite(yellowLedPin, HIGH);
+  trafficLight.redYellow();
   delay(3000);
-  digitalWrite(greenLedPin, HIGH);
-  digitalWrite(redLedPin, LOW);
-  digitalWrite(yellowLedPin, LOW);
+  trafficLight.green();
 }
 
 void disableMotor() {
