@@ -20,15 +20,6 @@ Piezo piezo(piezoPin, piezoLedPin);
 DistanceSensor distanceSensor(triggerPin, echoPin, minimumDistance);
 MFRC522 mfrc522(sdaPin, rstPin);
 
-enum class Mode {
-  CONTROLS_LOCKED,
-  SELECT_MODE,
-  MANUAL,
-  AUTOMATIC,
-  CHANGE_AUTOMATIC_MODE_INTERVAL_DAY,
-  CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT
-};
-
 Mode mode = Mode::CONTROLS_LOCKED;
 
 uint16_t automaticModeIntervalDay = 30; // Anzahl der Sekunden, in der die Schranke tagsüber geöffnet ist
@@ -204,12 +195,15 @@ void automaticMode() {
   lcd.print("Automatisch  ");
 
   uint16_t interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeIntervalDay; // Nachts anderes Intervall
-  bool backToMenu = false;
+  uint32_t intervalMillis = interval * 1000;
+  uint32_t startTime = millis(); 
   
-  for (uint16_t remainingTime = interval; remainingTime > 0; remainingTime--) {
+  while (millis() - startTime < intervalMillis) {
+    uint32_t remainingMillis = startTime + intervalMillis - millis();
+
     lcd.setCursor(0, 1);
     lcd.print("Noch ");
-    lcd.print(remainingTime);
+    lcd.print(remainingMillis / 1000);
     lcd.print(" Sek. ");
 
     if (automaticModeControlsLocked && validRFIDTagPresent()) {
@@ -223,17 +217,17 @@ void automaticMode() {
         if (IrReceiver.decodedIRData.decodedRawData == buttonUp) {
           mode = Mode::SELECT_MODE; // Zurück zum "Modus wählen"-Menü
           trafficLight.off();
-          backToMenu = true;
           break;
         } else if (IrReceiver.decodedIRData.decodedRawData == buttonX) {
           automaticModeControlsLocked = true;
         }
       }
     }
-
-    delay(1000);
   }
-  if (!backToMenu) closeAndOpenBarrier();
+
+  if (mode == Mode::AUTOMATIC) {
+    closeAndOpenBarrier();
+  }
 }
 
 void changeAutomaticModeInterval(boolean isNight) {
@@ -335,7 +329,8 @@ bool validRFIDTagPresent() {
 
     // Steuerung entsperren, falls die ID des RFID-Tags einer der eingespeicherten IDs entspricht
     if (mfrc522.uid.size == 4) {
-      for (uint8_t i = 0; i < sizeof(validIDs); i++) {
+      uint8_t numIDs = sizeof(validIDs) / sizeof(validIDs[0]);
+      for (uint8_t i = 0; i < numIDs; i++) {
         bool validID = true;
         for (uint8_t j = 0; j < 4; j++) {
           if (mfrc522.uid.uidByte[j] != validIDs[i][j]) validID = false;
