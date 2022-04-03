@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Arduino.h>
+
 class DistanceSensor {
 public:
   DistanceSensor(uint8_t triggerPin, uint8_t echoPin, uint8_t minimumDistance);

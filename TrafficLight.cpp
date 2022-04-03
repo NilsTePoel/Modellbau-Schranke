@@ -1,5 +1,3 @@
-#include <Arduino.h>
-
 #include "TrafficLight.h"
 
 TrafficLight::TrafficLight(uint8_t redLedPin, uint8_t yellowLedPin, uint8_t greenLedPin)

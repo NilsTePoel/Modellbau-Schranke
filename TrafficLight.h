@@ -1,4 +1,7 @@
 #pragma once
+
+#include <Arduino.h>
+
 class TrafficLight {
 public:
   TrafficLight(uint8_t redLedPin, uint8_t yellowLedPin, uint8_t greenLedPin);

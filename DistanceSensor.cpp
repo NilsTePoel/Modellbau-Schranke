@@ -1,5 +1,3 @@
-#include <Arduino.h>
-
 #include "DistanceSensor.h"
 
 DistanceSensor::DistanceSensor(uint8_t triggerPin, uint8_t echoPin, uint8_t minimumDistance) 

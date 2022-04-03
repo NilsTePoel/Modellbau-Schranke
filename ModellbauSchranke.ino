@@ -7,49 +7,17 @@
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 
+#include "Constants.h"
 #include "Debug.h"
-#include "DistanceSensor.h"
 #include "TrafficLight.h"
+#include "Piezo.h"
+#include "DistanceSensor.h"
 
-// LCD
-const uint8_t address = 0x27, lineLength = 16, lineCount = 2;
-LiquidCrystal_I2C lcd(address, lineLength, lineCount);
-
-// Infrarot-Receiver
-const uint8_t receiverPin = 11;
-const uint32_t buttonA = 3125149440;
-const uint32_t buttonB = 3091726080;
-const uint32_t buttonX = 3208707840;
-const uint32_t buttonLeft = 3141861120;
-const uint32_t buttonRight = 3158572800;
-const uint32_t buttonDown = 3927310080;
-const uint32_t buttonUp = 3108437760;
-
-// Schrittmotor
-const uint16_t spu = 2048; // Schritte pro Umdrehung
-const uint8_t stepperSpeed = 5; // Motor-Geschwindigkeit in Umdrehungen pro Minute
-const uint8_t stepperPins[4] = {3, 5, 4, 6};
+LiquidCrystal_I2C lcd(lcdAddress, lcdNumColumns, lcdNumRows);
 Stepper motor(spu, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
-
-// Ampel
-const uint8_t redLedPin = 28;
-const uint8_t yellowLedPin = 24;
-const uint8_t greenLedPin = 26;
 TrafficLight trafficLight(redLedPin, yellowLedPin, greenLedPin);
-
-// Piezo
-const uint8_t piezoPin = 8;
-
-// Ultraschallsensor
-const uint8_t triggerPin = 10;
-const uint8_t echoPin = A0;
-const uint8_t minimumDistance = 5; // Minimale Entfernung zur Schranke in Zentimetern
+Piezo piezo(piezoPin, piezoLedPin);
 DistanceSensor distanceSensor(triggerPin, echoPin, minimumDistance);
-
-// RFID Kit
-const uint8_t sdaPin = 53;
-const uint8_t rstPin = 2;
-const uint8_t validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}}; 
 MFRC522 mfrc522(sdaPin, rstPin);
 
 enum class Mode {
@@ -66,25 +34,23 @@ Mode mode = Mode::CONTROLS_LOCKED;
 uint16_t automaticModeIntervalDay = 30; // Anzahl der Sekunden, in der die Schranke tagsüber geöffnet ist
 uint16_t automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
 bool automaticModeControlsLocked = false;
-bool piezoEnabled = false;
 bool showTime = false;
 
 void setup() {
+  // Debug-Ausgaben
   setupDebugPrinting();
 
-  // LCD einrichten
+  // LCD
   lcd.init();
   lcd.backlight();
   
-  // IR-Empfänger aktivieren
+  // IR-Empfänger
   IrReceiver.begin(receiverPin, DISABLE_LED_FEEDBACK);
 
+  // Schrittmotor-Geschwindigkeit
   motor.setSpeed(stepperSpeed);
 
-  pinMode(piezoPin, OUTPUT); // Piezo-Pin
-  pinMode(LED_BUILTIN, OUTPUT); // Eingebaute LED (zeigt Piezo-Status an)
-
-  // RFID-Kit einrichten
+  // RFID-Kit
   SPI.begin();
   mfrc522.PCD_Init();
 
@@ -162,12 +128,10 @@ void selectMode() {
         mode = Mode::CHANGE_AUTOMATIC_MODE_INTERVAL_DAY;
         break;
       case buttonLeft:
-        piezoEnabled = false;
-        digitalWrite(LED_BUILTIN, LOW);
+        piezo.disable();
         break;
       case buttonRight:
-        piezoEnabled = true;
-        digitalWrite(LED_BUILTIN, HIGH);
+        piezo.enable();
         break;
       case buttonDown:
         showTime = !showTime;
@@ -321,9 +285,9 @@ void closeAndOpenBarrier() {
 
   // Ampel schaltet erst auf gelb und dann auf rot um
   trafficLight.yellow();
-  if (piezoEnabled) digitalWrite(piezoPin, HIGH); // Piezo einschalten
+  piezo.alarmOn();
   delay(500);
-  if (piezoEnabled) digitalWrite(piezoPin, LOW); // Piezo ausschalten
+  piezo.alarmOff();
   delay(2500);
   trafficLight.red();
   
