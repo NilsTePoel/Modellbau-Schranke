@@ -39,7 +39,7 @@ const uint8_t minimumDistance = 5; // Minimale Entfernung zur Schranke in Zentim
 // RFID Kit
 const uint8_t sdaPin = 53;
 const uint8_t rstPin = 2;
-const uint8_t validIDs[2][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}};
+const uint8_t validIDs[][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93}};
 
 enum class Mode {
   CONTROLS_LOCKED,

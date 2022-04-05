@@ -2,8 +2,6 @@
 #include <LiquidCrystal_I2C.h>
 #include <IRremote.h>
 #include <Stepper.h>
-#include <SPI.h>
-#include <MFRC522.h>
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 
@@ -12,13 +10,14 @@
 #include "TrafficLight.h"
 #include "Piezo.h"
 #include "DistanceSensor.h"
+#include "RFIDReader.h"
 
 LiquidCrystal_I2C lcd(lcdAddress, lcdNumColumns, lcdNumRows);
 Stepper motor(spu, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
 TrafficLight trafficLight(redLedPin, yellowLedPin, greenLedPin);
 Piezo piezo(piezoPin, piezoLedPin);
 DistanceSensor distanceSensor(triggerPin, echoPin, minimumDistance);
-MFRC522 mfrc522(sdaPin, rstPin);
+RFIDReader reader(sdaPin, rstPin, validIDs, sizeof(validIDs) / sizeof(validIDs[0]));
 
 Mode mode = Mode::CONTROLS_LOCKED;
 
@@ -34,20 +33,19 @@ void setup() {
   // LCD
   lcd.init();
   lcd.backlight();
-  
+
   // IR-Empfänger
   IrReceiver.begin(receiverPin, DISABLE_LED_FEEDBACK);
 
   // Schrittmotor-Geschwindigkeit
   motor.setSpeed(stepperSpeed);
 
-  // RFID-Kit
-  SPI.begin();
-  mfrc522.PCD_Init();
+  // RFID
+  reader.begin();
 
   // RTC
   setSyncProvider(RTC.get);
-  
+
   // Uhrzeit ausgeben, wenn der Debug-Modus aktiviert ist
   time_t t = now();
   DEBUG_PRINT(hour(t)); DEBUG_PRINT(":");
@@ -85,7 +83,7 @@ void controlsLocked() {
   lcd.print("gesperrt");
 
   // Warten, bis die Steuerung per RFID-Chip entsperrt wurde
-  if (validRFIDTagPresent()) {
+  if (reader.isValidRFIDTagPresent()) {
     mode = Mode::SELECT_MODE;
   }
 }
@@ -138,7 +136,7 @@ void manualMode() {
   lcd.print("Manuell         ");
   lcd.setCursor(0, 1);
   lcd.print("                ");
-  
+
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
     DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
@@ -197,7 +195,7 @@ void automaticMode() {
   uint16_t interval = (hour() >= 18 || hour() <= 6) ? automaticModeIntervalNight : automaticModeIntervalDay; // Nachts anderes Intervall
   uint32_t intervalMillis = interval * 1000;
   uint32_t startTime = millis(); 
-  
+
   while (millis() - startTime < intervalMillis) {
     uint32_t remainingMillis = startTime + intervalMillis - millis();
 
@@ -206,14 +204,14 @@ void automaticMode() {
     lcd.print(remainingMillis / 1000);
     lcd.print(" Sek. ");
 
-    if (automaticModeControlsLocked && validRFIDTagPresent()) {
+    if (automaticModeControlsLocked && reader.isValidRFIDTagPresent()) {
       automaticModeControlsLocked = false;
     } else if (!automaticModeControlsLocked) {
       // Wurden Daten empfangen?
       if (IrReceiver.decode()) {
         DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
         IrReceiver.resume(); // Nächsten Wert einlesen
-    
+
         if (IrReceiver.decodedIRData.decodedRawData == buttonUp) {
           mode = Mode::SELECT_MODE; // Zurück zum "Modus wählen"-Menü
           trafficLight.off();
@@ -232,7 +230,7 @@ void automaticMode() {
 
 void changeAutomaticModeInterval(boolean isNight) {
   uint16_t interval = isNight ? automaticModeIntervalNight : automaticModeIntervalDay;
-  
+
   lcd.setCursor(0, 0);
   lcd.print(isNight ? "Interv. (Nacht):" : "Interv. (Tag):  ");
   lcd.setCursor(0, 1);
@@ -284,7 +282,7 @@ void closeAndOpenBarrier() {
   piezo.alarmOff();
   delay(2500);
   trafficLight.red();
-  
+
   // Die Schranke soll sich nicht schließen, wenn sich ein Objekt unter ihr befindet
   while (distanceSensor.isBlockedByObstacle()) {
     lcd.setCursor(0, 1);
@@ -294,18 +292,18 @@ void closeAndOpenBarrier() {
 
   lcd.setCursor(0, 1);
   lcd.print("schlie\342t sich!");
-  
+
   motor.step(-512); // Schranke wird geschlossen
-  disableMotor();  
+  disableMotor();
 
   lcd.setCursor(0, 1);
   lcd.print("geschlossen   ");
-  
+
   delay(5000);
 
   lcd.setCursor(0, 1);
   lcd.print("\357ffnet sich!");
-  
+
   motor.step(512); // Schranke wird wieder geöffnet
   disableMotor();
 
@@ -319,31 +317,6 @@ void disableMotor() {
   for (uint8_t i = 0; i < 4; i++) {
     digitalWrite(stepperPins[i], LOW);
   }
-}
-
-bool validRFIDTagPresent() {
-  if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
-    #ifdef DEBUG_MODE
-      mfrc522.PICC_DumpDetailsToSerial(&mfrc522.uid);
-    #endif
-
-    // Steuerung entsperren, falls die ID des RFID-Tags einer der eingespeicherten IDs entspricht
-    if (mfrc522.uid.size == 4) {
-      uint8_t numIDs = sizeof(validIDs) / sizeof(validIDs[0]);
-      for (uint8_t i = 0; i < numIDs; i++) {
-        bool validID = true;
-        for (uint8_t j = 0; j < 4; j++) {
-          if (mfrc522.uid.uidByte[j] != validIDs[i][j]) validID = false;
-        }
-
-        if (validID) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
 }
 
 void printDigit(uint8_t digit) {
