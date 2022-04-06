@@ -9,8 +9,8 @@ public:
   void enable();
   void disable();
 
-  void alarmOn();
-  void alarmOff();
+  void alarmOn() const;
+  void alarmOff() const;
 
 private:
   const uint8_t m_piezoPin;

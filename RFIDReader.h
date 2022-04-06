@@ -1,14 +1,15 @@
 #pragma once
 
+#include <Arduino.h>
 #include <MFRC522.h>
 
 class RFIDReader {
 public:
   RFIDReader(uint8_t sdaPin, uint8_t rstPin, const uint8_t (*validIDs)[4], uint8_t numberOfValidIDs);
 
-  void begin();
+  void begin() const;
 
-  bool isValidRFIDTagPresent();
+  bool isValidRFIDTagPresent() const;
 
 private:
   const uint8_t m_sdaPin;

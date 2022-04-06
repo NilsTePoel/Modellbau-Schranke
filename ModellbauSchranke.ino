@@ -1,19 +1,19 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <IRremote.h>
-#include <Stepper.h>
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 
 #include "Constants.h"
 #include "Debug.h"
+#include "Barrier.h"
 #include "TrafficLight.h"
 #include "Piezo.h"
 #include "DistanceSensor.h"
 #include "RFIDReader.h"
 
 LiquidCrystal_I2C lcd(lcdAddress, lcdNumColumns, lcdNumRows);
-Stepper motor(spu, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
+Barrier barrier(spu, stepperPins, stepperSpeed);
 TrafficLight trafficLight(redLedPin, yellowLedPin, greenLedPin);
 Piezo piezo(piezoPin, piezoLedPin);
 DistanceSensor distanceSensor(triggerPin, echoPin, minimumDistance);
@@ -36,9 +36,6 @@ void setup() {
 
   // IR-Empfänger
   IrReceiver.begin(receiverPin, DISABLE_LED_FEEDBACK);
-
-  // Schrittmotor-Geschwindigkeit
-  motor.setSpeed(stepperSpeed);
 
   // RFID
   reader.begin();
@@ -148,35 +145,31 @@ void manualMode() {
         lcd.print("Schranke");
         lcd.setCursor(0, 1);
         lcd.print("schlie\342t sich!");
-        motor.step(-512);
-        disableMotor();
+        barrier.close();
         break;
       case buttonRight:
         lcd.setCursor(0, 0);
         lcd.print("Schranke");
         lcd.setCursor(0, 1);
         lcd.print("\357ffnet sich");
-        motor.step(512);
-        disableMotor();
+        barrier.open();
         break;
       case buttonA:
         lcd.setCursor(0, 0);
         lcd.print("100 Schritte");
         lcd.setCursor(0, 1);
         lcd.print("nach links");
-        motor.step(-100);
-        disableMotor();
+        barrier.step(-100);
         break;
       case buttonB:
         lcd.setCursor(0, 0);
         lcd.print("100 Schritte");
         lcd.setCursor(0, 1);
         lcd.print("nach rechts");
-        motor.step(100);
-        disableMotor();
+        barrier.step(100);
         break;
       case buttonDown:
-        closeAndOpenBarrier();
+        barrier.closeAndOpen(lcd, trafficLight, piezo, distanceSensor);
         break;
       case buttonUp:
         mode = Mode::SELECT_MODE; // Zurück zum "Modus wählen"-Menü
@@ -224,7 +217,7 @@ void automaticMode() {
   }
 
   if (mode == Mode::AUTOMATIC) {
-    closeAndOpenBarrier();
+    barrier.closeAndOpen(lcd, trafficLight, piezo, distanceSensor);
   }
 }
 
@@ -267,56 +260,6 @@ void changeAutomaticModeInterval(boolean isNight) {
 
   if (isNight) automaticModeIntervalNight = interval;
   else automaticModeIntervalDay = interval;
-}
-
-void closeAndOpenBarrier() {
-  lcd.setCursor(0, 0);
-  lcd.print("Schranke        ");
-  lcd.setCursor(0, 1);
-  lcd.print("schlie\342t sich!  ");
-
-  // Ampel schaltet erst auf gelb und dann auf rot um
-  trafficLight.yellow();
-  piezo.alarmOn();
-  delay(500);
-  piezo.alarmOff();
-  delay(2500);
-  trafficLight.red();
-
-  // Die Schranke soll sich nicht schließen, wenn sich ein Objekt unter ihr befindet
-  while (distanceSensor.isBlockedByObstacle()) {
-    lcd.setCursor(0, 1);
-    lcd.print("blockiert!    ");
-    delay(1000);
-  }
-
-  lcd.setCursor(0, 1);
-  lcd.print("schlie\342t sich!");
-
-  motor.step(-512); // Schranke wird geschlossen
-  disableMotor();
-
-  lcd.setCursor(0, 1);
-  lcd.print("geschlossen   ");
-
-  delay(5000);
-
-  lcd.setCursor(0, 1);
-  lcd.print("\357ffnet sich!");
-
-  motor.step(512); // Schranke wird wieder geöffnet
-  disableMotor();
-
-  // Ampel schaltet erst auf rot-gelb, dann auf grün
-  trafficLight.redYellow();
-  delay(3000);
-  trafficLight.green();
-}
-
-void disableMotor() {
-  for (uint8_t i = 0; i < 4; i++) {
-    digitalWrite(stepperPins[i], LOW);
-  }
 }
 
 void printDigit(uint8_t digit) {

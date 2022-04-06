@@ -16,13 +16,13 @@ void Piezo::disable() {
   digitalWrite(m_ledPin, LOW);
 }
 
-void Piezo::alarmOn() {
+void Piezo::alarmOn() const {
   if (m_enabled) {
     digitalWrite(m_piezoPin, HIGH);
   }
 }
 
-void Piezo::alarmOff() {
+void Piezo::alarmOff() const {
   if (m_enabled) {
     digitalWrite(m_piezoPin, LOW);
   }

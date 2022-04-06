@@ -8,31 +8,31 @@ TrafficLight::TrafficLight(uint8_t redLedPin, uint8_t yellowLedPin, uint8_t gree
   off();
 }
 
-void TrafficLight::green() {
+void TrafficLight::green() const {
   digitalWrite(m_redLedPin, LOW);
   digitalWrite(m_yellowLedPin, LOW);
   digitalWrite(m_greenLedPin, HIGH);
 }
 
-void TrafficLight::yellow() {
+void TrafficLight::yellow() const {
   digitalWrite(m_redLedPin, LOW);
   digitalWrite(m_yellowLedPin, HIGH);
   digitalWrite(m_greenLedPin, LOW);
 }
 
-void TrafficLight::red() {
+void TrafficLight::red() const {
   digitalWrite(m_redLedPin, HIGH);
   digitalWrite(m_yellowLedPin, LOW);
   digitalWrite(m_greenLedPin, LOW);
 }
 
-void TrafficLight::redYellow() {
+void TrafficLight::redYellow() const {
   digitalWrite(m_redLedPin, HIGH);
   digitalWrite(m_yellowLedPin, HIGH);
   digitalWrite(m_greenLedPin, LOW);
 }
 
-void TrafficLight::off() {
+void TrafficLight::off() const {
   digitalWrite(m_redLedPin, LOW);
   digitalWrite(m_yellowLedPin, LOW);
   digitalWrite(m_greenLedPin, LOW);
