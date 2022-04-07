@@ -21,10 +21,10 @@ RFIDReader reader(sdaPin, rstPin, validIDs, sizeof(validIDs) / sizeof(validIDs[0
 
 Mode mode = Mode::CONTROLS_LOCKED;
 
+bool selectModeShowTime = false; // Soll die aktuelle Uhrzeit im Menü "Modus wählen" angezeigt werden?
 uint16_t automaticModeIntervalDay = 30; // Anzahl der Sekunden, in der die Schranke tagsüber geöffnet ist
 uint16_t automaticModeIntervalNight = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
-bool automaticModeControlsLocked = false;
-bool showTime = false;
+bool automaticModeControlsLocked = false; // Ist die Steuerung im automatischen Modus aktuell gesperrt?
 
 void setup() {
   // Debug-Ausgaben
@@ -33,6 +33,7 @@ void setup() {
   // LCD
   lcd.init();
   lcd.backlight();
+  lcd.clear();
 
   // IR-Empfänger
   IrReceiver.begin(receiverPin, DISABLE_LED_FEEDBACK);
@@ -44,6 +45,10 @@ void setup() {
   setSyncProvider(RTC.get);
 
   // Uhrzeit ausgeben, wenn der Debug-Modus aktiviert ist
+  if (timeStatus() == timeSet) {
+    DEBUG_PRINTLN("Zeit mit der Real Time Clock synchronisiert.");
+  }
+
   time_t t = now();
   DEBUG_PRINT(hour(t)); DEBUG_PRINT(":");
   DEBUG_PRINT(minute(t)); DEBUG_PRINT(":");
@@ -89,7 +94,7 @@ void selectMode() {
   lcd.setCursor(0, 0);
   lcd.print("Modus w\341hlen    ");
   lcd.setCursor(0, 1);
-  if (showTime) {
+  if (selectModeShowTime) {
     time_t t = now();
     printDigit(hour(t)); lcd.print(":");
     printDigit(minute(t)); lcd.print(":");
@@ -100,7 +105,7 @@ void selectMode() {
 
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
+    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, HEX);
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
@@ -120,7 +125,7 @@ void selectMode() {
         piezo.enable();
         break;
       case buttonDown:
-        showTime = !showTime;
+        selectModeShowTime = !selectModeShowTime;
         break;
     }
   }
@@ -136,7 +141,7 @@ void manualMode() {
 
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
+    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, HEX);
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {
@@ -202,7 +207,7 @@ void automaticMode() {
     } else if (!automaticModeControlsLocked) {
       // Wurden Daten empfangen?
       if (IrReceiver.decode()) {
-        DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
+        DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, HEX);
         IrReceiver.resume(); // Nächsten Wert einlesen
 
         if (IrReceiver.decodedIRData.decodedRawData == buttonUp) {
@@ -233,7 +238,7 @@ void changeAutomaticModeInterval(boolean isNight) {
 
   // Wurden Daten empfangen?
   if (IrReceiver.decode()) {
-    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, DEC);
+    DEBUG_PRINTLN(IrReceiver.decodedIRData.decodedRawData, HEX);
     IrReceiver.resume(); // Nächsten Wert einlesen
 
     switch (IrReceiver.decodedIRData.decodedRawData) {

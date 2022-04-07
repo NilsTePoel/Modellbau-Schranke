@@ -7,9 +7,9 @@ class RFIDReader {
 public:
   RFIDReader(uint8_t sdaPin, uint8_t rstPin, const uint8_t (*validIDs)[4], uint8_t numberOfValidIDs);
 
-  void begin() const;
+  void begin();
 
-  bool isValidRFIDTagPresent() const;
+  bool isValidRFIDTagPresent();
 
 private:
   const uint8_t m_sdaPin;

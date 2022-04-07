@@ -9,13 +9,13 @@ const uint8_t lcdNumRows = 2;
 
 // Infrarot-Receiver
 const uint8_t receiverPin = 11;
-const uint32_t buttonA = 3125149440;
-const uint32_t buttonB = 3091726080;
-const uint32_t buttonX = 3208707840;
-const uint32_t buttonLeft = 3141861120;
-const uint32_t buttonRight = 3158572800;
-const uint32_t buttonDown = 3927310080;
-const uint32_t buttonUp = 3108437760;
+const uint32_t buttonA = 0xBA45FF00;
+const uint32_t buttonB = 0xB847FF00;
+const uint32_t buttonX = 0xBF40FF00;
+const uint32_t buttonLeft = 0xBB44FF00;
+const uint32_t buttonRight = 0xBC43FF00;
+const uint32_t buttonDown = 0xEA15FF00;
+const uint32_t buttonUp = 0xB946FF00;
 
 // Schrittmotor
 const uint16_t spu = 2048; // Schritte pro Umdrehung

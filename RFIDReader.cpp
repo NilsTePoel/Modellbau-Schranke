@@ -7,12 +7,12 @@ RFIDReader::RFIDReader(uint8_t sdaPin, uint8_t rstPin, const uint8_t (*validIDs)
   : m_sdaPin(sdaPin), m_rstPin(rstPin), m_validIDs(validIDs), m_numberOfValidIDs(numberOfValidIDs), m_mfrc522(m_sdaPin, m_rstPin) {
 }
 
-void RFIDReader::begin() const {
+void RFIDReader::begin() {
   SPI.begin();
   m_mfrc522.PCD_Init();
 }
 
-bool RFIDReader::isValidRFIDTagPresent() const {
+bool RFIDReader::isValidRFIDTagPresent() {
   if (m_mfrc522.PICC_IsNewCardPresent() && m_mfrc522.PICC_ReadCardSerial()) {
     #ifdef DEBUG_MODE
       m_mfrc522.PICC_DumpDetailsToSerial(&m_mfrc522.uid);

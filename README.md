@@ -5,13 +5,13 @@
 Die Tastencodes müssen je nach Infrarot-Fernbedienung in der Datei `Constants.h` angepasst werden:
 
 ```C++
-const uint32_t buttonA = 3125149440;
-const uint32_t buttonB = 3091726080;
-const uint32_t buttonX = 3208707840;
-const uint32_t buttonLeft = 3141861120;
-const uint32_t buttonRight = 3158572800;
-const uint32_t buttonDown = 3927310080;
-const uint32_t buttonUp = 3108437760;
+const uint32_t buttonA = 0xBA45FF00;
+const uint32_t buttonB = 0xB847FF00;
+const uint32_t buttonX = 0xBF40FF00;
+const uint32_t buttonLeft = 0xBB44FF00;
+const uint32_t buttonRight = 0xBC43FF00;
+const uint32_t buttonDown = 0xEA15FF00;
+const uint32_t buttonUp = 0xB946FF00;
 ```
 
 | Taste  | Funktion                                                         |
@@ -79,7 +79,7 @@ Die Pin-Belegung kann über die Konstanten in der Datei `Constants.h` geändert 
 
 ## Verwendete Bibliotheken
 
-* [IRremote](https://github.com/Arduino-IRremote/Arduino-IRremote)
-* [LiquidCrystal I2C](https://github.com/johnrickman/LiquidCrystal_I2C)
-* [MFRC522](https://github.com/miguelbalboa/rfid)
-* [Time Library](https://github.com/PaulStoffregen/Time)/[DS1307RTC](https://github.com/PaulStoffregen/DS1307RTC)
+* [IRremote 3.6.1](https://github.com/Arduino-IRremote/Arduino-IRremote)
+* [LiquidCrystal I2C 1.1.2](https://github.com/johnrickman/LiquidCrystal_I2C)
+* [MFRC522 1.4.10](https://github.com/miguelbalboa/rfid)
+* [Time Library 1.6.1](https://github.com/PaulStoffregen/Time)/[DS1307RTC 1.4.1](https://github.com/PaulStoffregen/DS1307RTC)
