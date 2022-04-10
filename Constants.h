@@ -43,9 +43,14 @@ const uint8_t validIDs[][4] = {{0x3A, 0x26, 0xC5, 0x5C}, {0x87, 0x5B, 0xCF, 0x93
 
 enum class Mode {
   CONTROLS_LOCKED,
-  SELECT_MODE,
+  SELECT,
   MANUAL,
   AUTOMATIC,
   CHANGE_AUTOMATIC_MODE_INTERVAL_DAY,
   CHANGE_AUTOMATIC_MODE_INTERVAL_NIGHT
+};
+
+struct AutomaticModeInterval {
+  uint16_t day = 30; // Anzahl der Sekunden, in der die Schranke tagsüber geöffnet ist
+  uint16_t night = 60; // Anzahl der Sekunden, in der die Schranke nachts (zw. 18 und 6 Uhr) geöffnet ist
 };
